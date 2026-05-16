@@ -4,6 +4,7 @@ from ui.main_ui import MainUI
 from ui.register_ui import RegisterUI
 from ui.clothes_ui import ClothesUI
 from ui.today_recommend_ui import TodayRecommendUI
+from ui.temperature_ui import TemperatureUI
 
 
 class ClothingApp:
@@ -17,9 +18,18 @@ class ClothingApp:
         self.clothes = []
 
         self.detail_options = {
-            "상의": ["반팔", "긴팔", "셔츠", "니트", "맨투맨", "후드티", "블라우스", "민소매"],
-            "하의": ["청바지", "슬랙스", "반바지", "조거팬츠", "면바지", "치마", "두꺼운 바지"],
-            "아우터": ["패딩", "후리스", "코트", "가디건", "자켓", "점퍼", "집업", "얇은 자켓"]
+            "상의": [
+                "반팔", "긴팔", "셔츠", "니트", "맨투맨",
+                "후드티", "블라우스", "민소매", "기모 맨투맨"
+            ],
+            "하의": [
+                "청바지", "슬랙스", "반바지", "조거팬츠",
+                "면바지", "치마", "두꺼운 바지", "얇은 바지"
+            ],
+            "아우터": [
+                "패딩", "후리스", "코트", "두꺼운 코트",
+                "가디건", "자켓", "점퍼", "집업", "얇은 자켓", "얇은 가디건"
+            ]
         }
 
         self.current_hue = 220
@@ -33,6 +43,7 @@ class ClothingApp:
         self.register_ui = RegisterUI(self)
         self.clothes_ui = ClothesUI(self)
         self.today_recommend_ui = TodayRecommendUI(self)
+        self.temperature_ui = TemperatureUI(self)
 
         self.show_home()
 
@@ -83,7 +94,7 @@ class ClothingApp:
     def open_menu(self):
         menu_win = tk.Toplevel(self.root)
         menu_win.title("메뉴")
-        menu_win.geometry("260x280")
+        menu_win.geometry("260x360")
         menu_win.configure(bg="white")
         menu_win.resizable(False, False)
 
@@ -93,7 +104,7 @@ class ClothingApp:
             font=("Arial", 16, "bold"),
             bg="white",
             fg="#222222"
-        ).pack(pady=20)
+        ).pack(pady=18)
 
         tk.Button(
             menu_win,
@@ -105,7 +116,19 @@ class ClothingApp:
             height=2,
             bd=0,
             command=lambda: [menu_win.destroy(), self.show_clothes_list()]
-        ).pack(pady=10)
+        ).pack(pady=8)
+
+        tk.Button(
+            menu_win,
+            text="온도 기반 추천",
+            font=("Arial", 12),
+            bg="#f1f3f7",
+            fg="#222222",
+            width=20,
+            height=2,
+            bd=0,
+            command=lambda: [menu_win.destroy(), self.show_temperature_ui()]
+        ).pack(pady=8)
 
         tk.Button(
             menu_win,
@@ -117,7 +140,7 @@ class ClothingApp:
             height=2,
             bd=0,
             command=lambda: [menu_win.destroy(), self.show_today_recommend_ui()]
-        ).pack(pady=10)
+        ).pack(pady=8)
 
         tk.Button(
             menu_win,
@@ -127,7 +150,7 @@ class ClothingApp:
             width=15,
             bd=0,
             command=menu_win.destroy
-        ).pack(pady=20)
+        ).pack(pady=18)
 
     def show_profile(self):
         profile_win = tk.Toplevel(self.root)
@@ -179,6 +202,9 @@ class ClothingApp:
 
     def show_today_recommend_ui(self):
         self.today_recommend_ui.show()
+
+    def show_temperature_ui(self):
+        self.temperature_ui.show()
 
 
 if __name__ == "__main__":

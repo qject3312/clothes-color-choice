@@ -1,7 +1,9 @@
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from api_client import add_clothing_to_backend, recommend_from_photo_backend, recommend_by_cloth_backend
 import colorsys
+
 
 from PIL import Image, ImageTk
 
@@ -378,6 +380,20 @@ class RegisterUI:
             )
 
             self.app.clothes.append(item)
+            add_clothing_to_backend(item)
+            result = recommend_by_cloth_backend(
+                item.category,
+                item.color_name,
+                item.detail
+            )
+            print("추천 result =", result)
+            messagebox.showinfo(
+                "추천 결과",
+                f"{result['base_color']} {result['base_detail']}에 어울리는 조합입니다.\n\n"
+                f"추천 하의 색상: {', '.join(result['recommended_bottom_colors'])}\n"
+                f"추천 신발 색상: {', '.join(result['recommended_shoes_colors'])}\n\n"
+                f"이유: {result['reason']}"
+            )
 
             messagebox.showinfo(
                 "저장 완료",
@@ -444,7 +460,41 @@ class RegisterUI:
             bd=0,
             command=lambda: [canvas.unbind_all("<MouseWheel>"), self.show_register_options()]
         ).grid(row=0, column=1, padx=5)
+        tk.Button(
+            form_card,
+            text="사진 색상으로 추천받기",
+            font=("Arial", 12, "bold"),
+            bg="#2f80ff",
+            fg="white",
+            height=2,
+            bd=0,
+            command=recommend_by_photo
+        ).pack(fill="x", padx=18, pady=8)
 
+    def recommend_by_photo():
+        if not self.photo_selected_colors:
+            messagebox.showwarning("색상 없음", "사진에서 색을 먼저 선택해 주세요.")
+            return
+
+        main_color = self.photo_selected_colors[0]
+
+        result = recommend_from_photo_backend(
+            color_name=main_color["name"],
+            category=category_var.get(),
+            target_category="하의"
+        )
+
+        recommended = ", ".join(result["recommended_colors"])
+        avoid = ", ".join(result["avoid_colors"])
+
+        messagebox.showinfo(
+            "사진 기반 추천 결과",
+            f"선택한 색상: {result['base_color']}\n\n"
+            f"추천 대상: {result['target_category']}\n\n"
+            f"추천 색상: {recommended}\n\n"
+            f"피하면 좋은 색상: {avoid}\n\n"
+            f"이유: {result['reason']}"
+        )
     def show_direct_register(self):
         self.app.clear_screen()
         self.app.create_top_bar("직접 등록하기")
@@ -691,6 +741,7 @@ class RegisterUI:
             )
 
             self.app.clothes.append(item)
+            add_clothing_to_backend(item)
             messagebox.showinfo(
                 "저장 완료",
                 f"{item.category} / {item.detail} 옷이 저장되었습니다.\n선택 색상: {item.color_name} RGB{item.rgb}"

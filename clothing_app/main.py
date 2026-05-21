@@ -13,7 +13,7 @@ class ClothingApp:
         self.root.title("옷 추천 앱")
         self.root.geometry("430x780")
         self.root.configure(bg="#f4f6fb")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
 
         self.clothes = []
 
@@ -96,7 +96,7 @@ class ClothingApp:
         menu_win.title("메뉴")
         menu_win.geometry("260x360")
         menu_win.configure(bg="white")
-        menu_win.resizable(False, False)
+        menu_win.resizable(True, True)
 
         tk.Label(
             menu_win,
@@ -157,7 +157,7 @@ class ClothingApp:
         profile_win.title("사용자 정보")
         profile_win.geometry("300x250")
         profile_win.configure(bg="white")
-        profile_win.resizable(False, False)
+        profile_win.resizable(True, True)
 
         tk.Label(
             profile_win,

@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import colorsys
+import requests
 
 from model.clothing import Clothing
 from logic.color_logic import rgb_to_hex, rgb_to_name
@@ -327,7 +328,17 @@ class RegisterUI:
                 color_name=color_name
             )
 
-            self.app.clothes.append(item)
+            try:
+                requests.post("http://127.0.0.1:8000/clothes", json={
+                    "category": item.category,
+                    "detail": item.detail,
+                    "color_name": item.color_name,
+                    "color_hex": item.hex_code
+                })
+            except requests.exceptions.RequestException:
+                messagebox.showerror("서버 오류", "백엔드 서버가 실행 중인지 확인해주세요.")
+                return
+
             messagebox.showinfo(
                 "저장 완료",
                 f"{item.category} / {item.detail} 옷이 저장되었습니다.\n선택 색상: {item.color_name} RGB{item.rgb}"

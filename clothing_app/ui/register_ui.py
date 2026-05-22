@@ -386,21 +386,8 @@ class RegisterUI:
                 item.detail
             )
             print("추천 result =", result)
-            messagebox.showinfo(
-                "추천 결과",
-                f"{result['base_color']} {result['base_detail']}에 어울리는 조합입니다.\n\n"
-                f"추천 하의 색상: {', '.join(result['recommended_bottom_colors'])}\n"
-                f"추천 신발 색상: {', '.join(result['recommended_shoes_colors'])}\n\n"
-                f"이유: {result['reason']}"
-            )
-
-            messagebox.showinfo(
-                "저장 완료",
-                f"{item.category} / {item.detail} 옷이 저장되었습니다.\n대표 색상: {item.color_name} {item.hex}"
-            )
-
             canvas.unbind_all("<MouseWheel>")
-            self.app.show_home()
+            self.app.show_recommendation_board(item, result)
 
         image_canvas.bind("<Button-1>", pick_color_from_image)
         draw_image_on_canvas()
@@ -749,20 +736,8 @@ class RegisterUI:
                 item.detail
             )
 
-            messagebox.showinfo(
-                "추천 결과",
-                f"{result['base_color']} {result['base_detail']}에 어울리는 조합입니다.\n\n"
-                f"추천 하의 색상: {', '.join(result['recommended_bottom_colors'])}\n"
-                f"추천 신발 색상: {', '.join(result['recommended_shoes_colors'])}\n\n"
-                f"이유: {result['reason']}"
-            )
-
-            messagebox.showinfo(
-                "저장 완료",
-                f"{item.category} / {item.detail} 옷이 저장되었습니다.\n선택 색상: {item.color_name} RGB{item.rgb}"
-            )
             canvas.unbind_all("<MouseWheel>")
-            self.app.show_home()
+            self.app.show_recommendation_board(item, result)   
 
         tk.Button(
             button_frame,

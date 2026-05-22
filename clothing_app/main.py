@@ -220,7 +220,66 @@ class ClothingApp:
 
     def show_temperature_ui(self):
         self.temperature_ui.show()
+    
+    def show_temperature_ui(self):
+        self.temperature_ui.show()
 
+
+    def show_recommendation_board(self, item, result):
+        self.clear_screen()
+        self.create_top_bar("추천 코디")
+
+        body = tk.Frame(self.main_frame, bg="#f4f6fb")
+        body.pack(fill="both", expand=True, padx=18, pady=18)
+
+        tk.Label(
+            body,
+            text="오늘의 추천 코디",
+            font=("Arial", 20, "bold"),
+            bg="#f4f6fb"
+        ).pack(pady=(10,20))
+
+        tk.Label(
+            body,
+            text=f"{item.color_name} {item.detail}",
+            font=("Arial", 14, "bold"),
+            bg="#f4f6fb"
+        ).pack()
+
+        tk.Canvas(
+            body,
+            width=250,
+            height=50,
+            bg=item.hex,
+            highlightthickness=1
+        ).pack(pady=10)
+
+        tk.Label(
+            body,
+            text=f"추천 하의: {', '.join(result['recommended_bottom_colors'])}",
+            bg="#f4f6fb",
+            font=("Arial",11)
+        ).pack(pady=5)
+
+        tk.Label(
+            body,
+            text=f"추천 신발: {', '.join(result['recommended_shoes_colors'])}",
+            bg="#f4f6fb",
+            font=("Arial",11)
+        ).pack(pady=5)
+
+        tk.Label(
+            body,
+            text=f"이유:\n{result['reason']}",
+            bg="#f4f6fb",
+            wraplength=340
+        ).pack(pady=10)
+
+        tk.Button(
+            body,
+            text="홈으로",
+            command=self.show_home
+        ).pack()
 
 if __name__ == "__main__":
     root = tk.Tk()

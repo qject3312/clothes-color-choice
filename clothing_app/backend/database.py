@@ -1,6 +1,13 @@
 import sqlite3
 
-DB_NAME = "clothes.db"
+import sqlite3
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_NAME = BASE_DIR / "clothes.db"
+
+def get_connection():
+    return sqlite3.connect(DB_NAME)
 
 def get_connection():
     return sqlite3.connect(DB_NAME)

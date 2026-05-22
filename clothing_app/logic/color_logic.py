@@ -29,6 +29,8 @@ def rgb_to_name(r, g, b):
         return "카키"
     if r < 100 and g < 120 and b > 120:
         return "네이비"
+    if b > 150 and g > 140 and r < 180:
+        return "하늘색"
     if b > r and b > g:
         return "파랑"
     if g > r and g > b:

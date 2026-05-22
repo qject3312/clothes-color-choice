@@ -1,11 +1,12 @@
 import tkinter as tk
 
+from api_client import get_clothes_from_backend
+from model.clothing import Clothing
 from ui.main_ui import MainUI
 from ui.register_ui import RegisterUI
 from ui.clothes_ui import ClothesUI
 from ui.today_recommend_ui import TodayRecommendUI
 from ui.temperature_ui import TemperatureUI
-
 
 class ClothingApp:
     def __init__(self, root):
@@ -16,6 +17,20 @@ class ClothingApp:
         self.root.resizable(True, True)
 
         self.clothes = []
+        saved_clothes = get_clothes_from_backend()
+
+        for c in saved_clothes:
+            self.clothes.append(
+                Clothing(
+                    category=c["category"],
+                    detail=c["detail"],
+                    feature=c["feature"],
+                    rgb=(0, 0, 0),
+                    hex_code=c["color_hex"],
+                    color_name=c["color_name"],
+                    image_path=c["image_path"]
+                )
+            )
 
         self.detail_options = {
             "상의": [

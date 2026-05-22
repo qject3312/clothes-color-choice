@@ -12,8 +12,33 @@ def add_clothing_to_backend(item):
         "image_path": item.image_path
     }
 
-    response = requests.post(f"{BASE_URL}/clothes", json=data)
-    return response.json()
+def add_clothing_to_backend(item):
+    data = {
+        "category": item.category,
+        "detail": item.detail,
+        "feature": item.feature,
+        "color_name": item.color_name,
+        "color_hex": item.hex,
+        "image_path": item.image_path
+    }
+
+    try:
+        response = requests.post(
+            f"{BASE_URL}/clothes",
+            json=data,
+            timeout=3
+        )
+
+        print("==== 저장 요청 ====")
+        print("보낸 데이터:", data)
+        print("상태코드:", response.status_code)
+        print("응답:", response.text)
+
+        return response.json()
+
+    except Exception as e:
+        print("저장 실패:", e)
+        return {"error": str(e)}
 
 
 def get_clothes_from_backend():

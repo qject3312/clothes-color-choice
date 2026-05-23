@@ -1,8 +1,6 @@
-import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import colorsys
-
+from api_client import add_clothing_to_backend, recommend_from_photo_backend
 from PIL import Image, ImageTk
 
 from model.clothing import Clothing
@@ -30,30 +28,18 @@ class RegisterUI:
         body.pack(fill="both", expand=True)
 
         center_frame = tk.Frame(body, bg="#f4f6fb")
-        center_frame.place(relx=0.5, rely=0.38, anchor="center")
+        center_frame.place(relx=0.5, rely=0.42, anchor="center")
 
         tk.Button(
             center_frame,
             text="사진으로 등록하기",
-            font=("Arial", 16, "bold"),
-            bg="#5f6c86",
-            fg="white",
-            width=18,
-            height=2,
-            bd=0,
-            command=self.show_photo_register
-        ).pack(pady=18)
-
-        tk.Button(
-            center_frame,
-            text="직접 등록하기",
             font=("Arial", 16, "bold"),
             bg="#2f80ff",
             fg="white",
             width=18,
             height=2,
             bd=0,
-            command=self.show_direct_register
+            command=self.show_photo_register
         ).pack(pady=18)
 
         tk.Button(
@@ -79,8 +65,50 @@ class RegisterUI:
         self.photo_selected_colors = []
         self.photo_selected_file_path = ""
 
+        selected_features = {
+            "fit": "",
+            "thickness": "",
+            "mood": "",
+            "season": ""
+        }
+
+        memo_var = tk.StringVar(value="예: 데일리용, 학교 갈 때, 중요한 날")
+
+        feature_options = {
+            "상의": {
+                "fit": ["오버핏", "정핏", "슬림핏"],
+                "thickness": ["얇음", "보통", "두꺼움"],
+                "mood": ["캐주얼", "댄디", "미니멀", "스트릿", "포멀"],
+                "season": ["봄가을", "여름", "겨울"]
+            },
+            "하의": {
+                "fit": ["와이드", "일자핏", "슬림핏", "스키니", "조거핏"],
+                "thickness": ["얇음", "보통", "두꺼움"],
+                "mood": ["캐주얼", "댄디", "스트릿", "포멀"],
+                "season": ["봄가을", "여름", "겨울"]
+            },
+            "아우터": {
+                "fit": ["오버핏", "정핏", "크롭", "롱기장"],
+                "thickness": ["얇음", "보통", "두꺼움"],
+                "mood": ["캐주얼", "댄디", "미니멀", "스트릿", "포멀"],
+                "season": ["봄가을", "겨울"]
+            },
+            "신발": {
+                "fit": ["낮은 굽", "높은 굽", "발볼 넓음", "발볼 보통"],
+                "thickness": ["가벼움", "보통", "두꺼움"],
+                "mood": ["캐주얼", "댄디", "스트릿", "스포티", "포멀"],
+                "season": ["봄가을", "여름", "겨울"]
+            },
+            "악세서리": {
+                "fit": ["작은 사이즈", "보통 사이즈", "큰 사이즈"],
+                "thickness": ["얇음", "보통", "두꺼움"],
+                "mood": ["캐주얼", "댄디", "미니멀", "스트릿", "포멀", "러블리"],
+                "season": ["사계절", "봄가을", "여름", "겨울"]
+            }
+        }
+
         outer = tk.Frame(self.app.main_frame, bg="#f4f6fb")
-        outer.pack(fill="both", expand=True, padx=12, pady=12)
+        outer.pack(fill="both", expand=True, padx=10, pady=10)
 
         canvas = tk.Canvas(outer, bg="#f4f6fb", highlightthickness=0)
         scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
@@ -91,7 +119,12 @@ class RegisterUI:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        def resize_body(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+
+        canvas.bind("<Configure>", resize_body)
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
@@ -113,7 +146,7 @@ class RegisterUI:
             fg="#222222",
             wraplength=350,
             justify="left"
-        ).pack(anchor="w", padx=18, pady=(18, 8))
+        ).pack(anchor="w", padx=18, pady=(15, 6))
 
         tk.Label(
             form_card,
@@ -121,76 +154,20 @@ class RegisterUI:
             font=("Arial", 10),
             bg="white",
             fg="#666666"
-        ).pack(anchor="w", padx=18, pady=(0, 10))
+        ).pack(anchor="w", padx=18, pady=(0, 8))
 
         image_canvas = tk.Canvas(
             form_card,
-            width=340,
-            height=340,
+            width=260,
+            height=260,
             bg="#eef1f7",
             highlightthickness=1,
             highlightbackground="#cccccc"
         )
-        image_canvas.pack(pady=8)
+        image_canvas.pack(pady=(4, 6))
 
         selected_color_frame = tk.Frame(form_card, bg="white")
-        selected_color_frame.pack(fill="x", padx=18, pady=8)
-
-        selected_color_text = tk.Label(
-            selected_color_frame,
-            text="선택된 색: 없음",
-            font=("Arial", 10),
-            bg="white",
-            fg="#444444",
-            justify="left",
-            wraplength=340
-        )
-        selected_color_text.pack(anchor="w")
-
-        tk.Label(form_card, text="종류", font=("Arial", 12, "bold"), bg="white").pack(anchor="w", padx=18, pady=(15, 5))
-
-        category_var = tk.StringVar(value="상의")
-        category_box = ttk.Combobox(
-            form_card,
-            textvariable=category_var,
-            state="readonly",
-            values=["상의", "하의", "아우터"],
-            font=("Arial", 11)
-        )
-        category_box.pack(fill="x", padx=18, pady=4)
-
-        tk.Label(form_card, text="세부 종류", font=("Arial", 12, "bold"), bg="white").pack(anchor="w", padx=18, pady=(12, 5))
-
-        detail_var = tk.StringVar()
-        detail_box = ttk.Combobox(
-            form_card,
-            textvariable=detail_var,
-            state="readonly",
-            font=("Arial", 11)
-        )
-        detail_box.pack(fill="x", padx=18, pady=4)
-
-        def update_detail_options(event=None):
-            selected = category_var.get()
-            options = self.app.detail_options.get(selected, [])
-            detail_box["values"] = options
-            if options:
-                detail_box.set(options[0])
-
-        category_box.bind("<<ComboboxSelected>>", update_detail_options)
-        update_detail_options()
-
-        tk.Label(form_card, text="특징", font=("Arial", 12, "bold"), bg="white").pack(anchor="w", padx=18, pady=(12, 5))
-
-        feature_entry = tk.Entry(form_card, font=("Arial", 11), bd=1, relief="solid")
-        feature_entry.pack(fill="x", padx=18, pady=4, ipady=5)
-        feature_entry.insert(0, "예: 오버핏, 얇음, 캐주얼")
-
-        def clear_placeholder(event):
-            if feature_entry.get() == "예: 오버핏, 얇음, 캐주얼":
-                feature_entry.delete(0, tk.END)
-
-        feature_entry.bind("<FocusIn>", clear_placeholder)
+        selected_color_frame.pack(fill="x", padx=18, pady=(4, 6))
 
         def refresh_selected_colors():
             for widget in selected_color_frame.winfo_children():
@@ -212,20 +189,20 @@ class RegisterUI:
                 font=("Arial", 10, "bold"),
                 bg="white",
                 fg="#222222"
-            ).pack(anchor="w", pady=(0, 5))
+            ).pack(anchor="w", pady=(0, 4))
 
             for idx, color in enumerate(self.photo_selected_colors, start=1):
                 row = tk.Frame(selected_color_frame, bg="white")
-                row.pack(fill="x", pady=2)
+                row.pack(fill="x", pady=1)
 
-                box = tk.Canvas(row, width=24, height=24, bg="white", highlightthickness=0)
+                box = tk.Canvas(row, width=22, height=22, bg="white", highlightthickness=0)
                 box.pack(side="left", padx=(0, 8))
-                box.create_rectangle(2, 2, 22, 22, fill=color["hex"], outline="#999999")
+                box.create_rectangle(2, 2, 20, 20, fill=color["hex"], outline="#999999")
 
                 tk.Label(
                     row,
                     text=f"{idx}. {color['name']} / RGB{color['rgb']} / {color['hex']}",
-                    font=("Arial", 10),
+                    font=("Arial", 9),
                     bg="white",
                     fg="#444444"
                 ).pack(side="left")
@@ -235,8 +212,8 @@ class RegisterUI:
 
             if self.photo_original_image is None:
                 image_canvas.create_text(
-                    170,
-                    170,
+                    130,
+                    130,
                     text="사진을 선택하세요",
                     fill="#777777",
                     font=("Arial", 13, "bold")
@@ -244,15 +221,15 @@ class RegisterUI:
                 return
 
             original_w, original_h = self.photo_original_image.size
-            max_size = 330
+            max_size = 250
 
             scale = min(max_size / original_w, max_size / original_h)
             display_w = int(original_w * scale)
             display_h = int(original_h * scale)
 
             self.photo_scale = scale
-            self.photo_offset_x = (340 - display_w) // 2
-            self.photo_offset_y = (340 - display_h) // 2
+            self.photo_offset_x = (260 - display_w) // 2
+            self.photo_offset_y = (260 - display_h) // 2
 
             self.photo_display_image = self.photo_original_image.resize((display_w, display_h))
             self.photo_tk_image = ImageTk.PhotoImage(self.photo_display_image)
@@ -293,6 +270,31 @@ class RegisterUI:
             draw_image_on_canvas()
             refresh_selected_colors()
 
+        def reset_colors():
+            self.photo_selected_colors = []
+            draw_image_on_canvas()
+            refresh_selected_colors()
+
+        def get_average_color(original_x, original_y):
+            pixels = []
+
+            for dx in range(-4, 5):
+                for dy in range(-4, 5):
+                    px = original_x + dx
+                    py = original_y + dy
+
+                    if (
+                        0 <= px < self.photo_original_image.size[0]
+                        and 0 <= py < self.photo_original_image.size[1]
+                    ):
+                        pixels.append(self.photo_original_image.getpixel((px, py)))
+
+            r = sum(p[0] for p in pixels) // len(pixels)
+            g = sum(p[1] for p in pixels) // len(pixels)
+            b = sum(p[2] for p in pixels) // len(pixels)
+
+            return r, g, b
+
         def pick_color_from_image(event):
             if self.photo_original_image is None:
                 messagebox.showwarning("사진 없음", "먼저 사진을 선택해 주세요.")
@@ -320,7 +322,7 @@ class RegisterUI:
             original_x = max(0, min(self.photo_original_image.size[0] - 1, original_x))
             original_y = max(0, min(self.photo_original_image.size[1] - 1, original_y))
 
-            r, g, b = self.photo_original_image.getpixel((original_x, original_y))
+            r, g, b = get_average_color(original_x, original_y)
             hex_code = rgb_to_hex(r, g, b)
             color_name = rgb_to_name(r, g, b)
 
@@ -336,10 +338,34 @@ class RegisterUI:
             draw_image_on_canvas()
             refresh_selected_colors()
 
-        def reset_colors():
-            self.photo_selected_colors = []
-            draw_image_on_canvas()
-            refresh_selected_colors()
+        image_canvas.bind("<Button-1>", pick_color_from_image)
+        draw_image_on_canvas()
+        refresh_selected_colors()
+
+        def make_feature_text():
+            parts = []
+
+            if selected_features["fit"]:
+                parts.append(f"핏: {selected_features['fit']}")
+
+            if selected_features["thickness"]:
+                parts.append(f"두께: {selected_features['thickness']}")
+
+            if selected_features["mood"]:
+                parts.append(f"무드: {selected_features['mood']}")
+
+            if selected_features["season"]:
+                parts.append(f"계절감: {selected_features['season']}")
+
+            memo = memo_var.get().strip()
+
+            if memo and memo != "예: 데일리용, 학교 갈 때, 중요한 날":
+                parts.append(f"메모: {memo}")
+
+            if not parts:
+                return "특징 없음"
+
+            return " / ".join(parts)
 
         def save_photo_clothing():
             if self.photo_original_image is None or not self.photo_selected_file_path:
@@ -350,13 +376,10 @@ class RegisterUI:
                 messagebox.showwarning("색상 없음", "사진에서 색을 최소 1개 이상 선택해 주세요.")
                 return
 
-            feature_text = feature_entry.get().strip()
-            if feature_text == "" or feature_text == "예: 오버핏, 얇음, 캐주얼":
-                feature_text = "특징 없음"
-
             main_color = self.photo_selected_colors[0]
 
             colors_for_save = []
+
             for color in self.photo_selected_colors:
                 colors_for_save.append(
                     {
@@ -365,6 +388,8 @@ class RegisterUI:
                         "name": color["name"]
                     }
                 )
+
+            feature_text = make_feature_text()
 
             item = Clothing(
                 category=category_var.get(),
@@ -378,346 +403,231 @@ class RegisterUI:
             )
 
             self.app.clothes.append(item)
+            result = add_clothing_to_backend(item)
 
-            messagebox.showinfo(
-                "저장 완료",
-                f"{item.category} / {item.detail} 옷이 저장되었습니다.\n대표 색상: {item.color_name} {item.hex}"
-            )
+            if isinstance(result, dict) and "error" in result:
+                messagebox.showwarning(
+                    "백엔드 저장 실패",
+                    "앱 화면에는 추가했지만 서버 저장은 실패했습니다.\n백엔드 서버가 켜져 있는지 확인해 주세요."
+                )
+            else:
+                messagebox.showinfo(
+                    "저장 완료",
+                    f"{item.category} / {item.detail} 옷이 저장되었습니다."
+                )
 
             canvas.unbind_all("<MouseWheel>")
             self.app.show_home()
 
-        image_canvas.bind("<Button-1>", pick_color_from_image)
-        draw_image_on_canvas()
-        refresh_selected_colors()
-
-        button_row1 = tk.Frame(form_card, bg="white")
-        button_row1.pack(pady=(12, 6))
+        image_button_row = tk.Frame(form_card, bg="white")
+        image_button_row.pack(pady=(4, 10))
 
         tk.Button(
-            button_row1,
+            image_button_row,
             text="사진 선택",
-            font=("Arial", 11, "bold"),
+            font=("Arial", 10, "bold"),
             bg="#5f6c86",
             fg="white",
-            width=12,
-            height=2,
+            width=9,
+            height=1,
             bd=0,
             command=select_image
-        ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=3)
 
         tk.Button(
-            button_row1,
+            image_button_row,
             text="색 초기화",
-            font=("Arial", 11),
+            font=("Arial", 10),
             bg="#d9dee8",
             fg="#222222",
-            width=12,
-            height=2,
+            width=9,
+            height=1,
             bd=0,
             command=reset_colors
-        ).grid(row=0, column=1, padx=5)
-
-        button_row2 = tk.Frame(form_card, bg="white")
-        button_row2.pack(pady=(8, 18))
+        ).grid(row=0, column=1, padx=3)
 
         tk.Button(
-            button_row2,
-            text="저장하기",
-            font=("Arial", 12, "bold"),
+            image_button_row,
+            text="사진 저장",
+            font=("Arial", 10, "bold"),
             bg="#47c95a",
             fg="white",
-            width=12,
-            height=2,
+            width=9,
+            height=1,
             bd=0,
             command=save_photo_clothing
-        ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=2, padx=3)
 
-        tk.Button(
-            button_row2,
-            text="뒤로가기",
-            font=("Arial", 12),
-            bg="#d9dee8",
-            fg="#222222",
-            width=12,
-            height=2,
-            bd=0,
-            command=lambda: [canvas.unbind_all("<MouseWheel>"), self.show_register_options()]
-        ).grid(row=0, column=1, padx=5)
-
-    def show_direct_register(self):
-        self.app.clear_screen()
-        self.app.create_top_bar("직접 등록하기")
-
-        outer = tk.Frame(self.app.main_frame, bg="#f4f6fb")
-        outer.pack(fill="both", expand=True, padx=12, pady=12)
-
-        canvas = tk.Canvas(outer, bg="#f4f6fb", highlightthickness=0)
-        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg="#f4f6fb")
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        form_card = tk.Frame(scrollable_frame, bg="white", bd=0)
-        form_card.pack(fill="both", expand=True, padx=6, pady=6)
-
-        tk.Label(form_card, text="종류", font=("Arial", 13, "bold"), bg="white", fg="#222222").pack(anchor="w", padx=20, pady=(18, 6))
+        tk.Label(
+            form_card,
+            text="종류",
+            font=("Arial", 12, "bold"),
+            bg="white"
+        ).pack(anchor="w", padx=18, pady=(8, 4))
 
         category_var = tk.StringVar(value="상의")
         category_box = ttk.Combobox(
             form_card,
             textvariable=category_var,
             state="readonly",
-            values=["상의", "하의", "아우터"],
-            font=("Arial", 12)
+            values=["상의", "하의", "아우터", "신발", "악세서리"],
+            font=("Arial", 11)
         )
-        category_box.pack(fill="x", padx=20, pady=5)
+        category_box.pack(fill="x", padx=18, pady=3)
 
-        tk.Label(form_card, text="세부 종류", font=("Arial", 13, "bold"), bg="white", fg="#222222").pack(anchor="w", padx=20, pady=(16, 6))
+        tk.Label(
+            form_card,
+            text="세부 종류",
+            font=("Arial", 12, "bold"),
+            bg="white"
+        ).pack(anchor="w", padx=18, pady=(8, 4))
 
         detail_var = tk.StringVar()
         detail_box = ttk.Combobox(
             form_card,
             textvariable=detail_var,
             state="readonly",
-            font=("Arial", 12)
+            font=("Arial", 11)
         )
-        detail_box.pack(fill="x", padx=20, pady=5)
+        detail_box.pack(fill="x", padx=18, pady=3)
+
+        feature_section = tk.Frame(form_card, bg="white")
+        feature_section.pack(fill="x", padx=18, pady=(8, 4))
+
+        def select_feature(key, value):
+            if selected_features[key] == value:
+                selected_features[key] = ""
+            else:
+                selected_features[key] = value
+
+            render_feature_buttons()
+
+        def render_feature_buttons():
+            for widget in feature_section.winfo_children():
+                widget.destroy()
+
+            tk.Label(
+                feature_section,
+                text="특징 선택",
+                font=("Arial", 12, "bold"),
+                bg="white",
+                fg="#222222"
+            ).pack(anchor="w", pady=(4, 6))
+
+            current_category = category_var.get()
+            options = feature_options.get(current_category, {})
+
+            option_titles = {
+                "fit": "핏",
+                "thickness": "두께",
+                "mood": "무드",
+                "season": "계절감"
+            }
+
+            for key in ["fit", "thickness", "mood", "season"]:
+                block = tk.Frame(feature_section, bg="white")
+                block.pack(fill="x", pady=(2, 5))
+
+                tk.Label(
+                    block,
+                    text=option_titles[key],
+                    font=("Arial", 10, "bold"),
+                    bg="white",
+                    fg="#333333"
+                ).pack(anchor="w", pady=(0, 3))
+
+                row = tk.Frame(block, bg="white")
+                row.pack(fill="x")
+
+                for value in options.get(key, []):
+                    is_selected = selected_features[key] == value
+
+                    btn = tk.Button(
+                        row,
+                        text=value,
+                        font=("Arial", 8, "bold"),
+                        bg="#2f80ff" if is_selected else "#eef1f7",
+                        fg="white" if is_selected else "#222222",
+                        bd=0,
+                        padx=6,
+                        pady=4,
+                        command=lambda k=key, v=value: select_feature(k, v)
+                    )
+                    btn.pack(side="left", padx=2, pady=2)
+
+            tk.Label(
+                feature_section,
+                text="추가 메모",
+                font=("Arial", 10, "bold"),
+                bg="white",
+                fg="#333333"
+            ).pack(anchor="w", pady=(8, 3))
+
+            memo_entry = tk.Entry(
+                feature_section,
+                textvariable=memo_var,
+                font=("Arial", 11),
+                bd=1,
+                relief="solid"
+            )
+            memo_entry.pack(fill="x", ipady=5)
+
+            def clear_memo_placeholder(event):
+                if memo_var.get() == "예: 데일리용, 학교 갈 때, 중요한 날":
+                    memo_var.set("")
+
+            memo_entry.bind("<FocusIn>", clear_memo_placeholder)
 
         def update_detail_options(event=None):
             selected = category_var.get()
             options = self.app.detail_options.get(selected, [])
             detail_box["values"] = options
+
             if options:
                 detail_box.set(options[0])
+
+            selected_features["fit"] = ""
+            selected_features["thickness"] = ""
+            selected_features["mood"] = ""
+            selected_features["season"] = ""
+
+            render_feature_buttons()
 
         category_box.bind("<<ComboboxSelected>>", update_detail_options)
         update_detail_options()
 
-        tk.Label(form_card, text="특징", font=("Arial", 13, "bold"), bg="white", fg="#222222").pack(anchor="w", padx=20, pady=(16, 6))
+        def recommend_by_photo():
+            if not self.photo_selected_colors:
+                messagebox.showwarning("색상 없음", "사진에서 색을 먼저 선택해 주세요.")
+                return
 
-        feature_entry = tk.Entry(form_card, font=("Arial", 12), bd=1, relief="solid")
-        feature_entry.pack(fill="x", padx=20, pady=5, ipady=6)
-        feature_entry.insert(0, "예: 오버핏, 얇음, 캐주얼")
+            main_color = self.photo_selected_colors[0]
 
-        def clear_placeholder(event):
-            if feature_entry.get() == "예: 오버핏, 얇음, 캐주얼":
-                feature_entry.delete(0, tk.END)
-
-        feature_entry.bind("<FocusIn>", clear_placeholder)
-
-        tk.Label(
-            form_card,
-            text="색상 선택",
-            font=("Arial", 13, "bold"),
-            bg="white",
-            fg="#222222"
-        ).pack(anchor="w", padx=20, pady=(16, 6))
-
-        picker_info = tk.Label(
-            form_card,
-            text="위 막대에서 기본 색을 고르고, 아래 정사각형 안에서 드래그해 원하는 색을 선택하세요.",
-            font=("Arial", 10),
-            bg="white",
-            fg="#666666",
-            justify="left",
-            wraplength=340
-        )
-        picker_info.pack(anchor="w", padx=20, pady=(0, 8))
-
-        picker_frame = tk.Frame(form_card, bg="white")
-        picker_frame.pack(pady=4)
-
-        hue_width = 240
-        hue_height = 20
-        color_canvas_size = 180
-
-        hue_canvas = tk.Canvas(
-            picker_frame,
-            width=hue_width,
-            height=hue_height,
-            highlightthickness=1,
-            highlightbackground="#cccccc",
-            bg="white"
-        )
-        hue_canvas.pack(pady=(0, 10))
-
-        color_canvas = tk.Canvas(
-            picker_frame,
-            width=color_canvas_size,
-            height=color_canvas_size,
-            highlightthickness=1,
-            highlightbackground="#cccccc",
-            bg="white"
-        )
-        color_canvas.pack()
-
-        selected_preview_row = tk.Frame(form_card, bg="white")
-        selected_preview_row.pack(pady=12)
-
-        color_preview = tk.Canvas(selected_preview_row, width=70, height=45, bg="white", highlightthickness=0)
-        color_preview.pack(side="left", padx=(0, 10))
-        preview_rect = color_preview.create_rectangle(8, 8, 62, 38, fill=self.app.selected_hex, outline="#bbbbbb")
-
-        preview_text = tk.Label(
-            selected_preview_row,
-            text="",
-            font=("Arial", 11),
-            bg="white",
-            fg="#444444",
-            justify="left"
-        )
-        preview_text.pack(side="left")
-
-        hue_indicator = None
-        color_indicator = None
-        hue_image = None
-        color_image = None
-
-        def make_hue_bar():
-            nonlocal hue_image
-            img = tk.PhotoImage(width=hue_width, height=hue_height)
-
-            for x in range(hue_width):
-                h = x / hue_width
-                r, g, b = colorsys.hsv_to_rgb(h, 1, 1)
-                hex_color = rgb_to_hex(r * 255, g * 255, b * 255)
-                img.put(hex_color, to=(x, 0, x + 1, hue_height))
-
-            hue_canvas.delete("all")
-            hue_canvas.create_image(0, 0, anchor="nw", image=img)
-            hue_image = img
-
-        def make_color_square():
-            nonlocal color_image, color_indicator
-            size = color_canvas_size
-            img = tk.PhotoImage(width=size, height=size)
-
-            for y in range(size):
-                v = 1 - (y / (size - 1))
-                row_colors = []
-                for x in range(size):
-                    s = x / (size - 1)
-                    r, g, b = colorsys.hsv_to_rgb(self.app.current_hue / 360, s, v)
-                    row_colors.append(rgb_to_hex(r * 255, g * 255, b * 255))
-                img.put("{" + " ".join(row_colors) + "}", to=(0, y))
-
-            color_canvas.delete("all")
-            color_canvas.create_image(0, 0, anchor="nw", image=img)
-            color_image = img
-            color_indicator = color_canvas.create_oval(0, 0, 10, 10, outline="white", width=2)
-
-        def update_preview(rgb):
-            self.app.selected_rgb = tuple(map(int, rgb))
-            self.app.selected_hex = rgb_to_hex(*self.app.selected_rgb)
-            color_name = rgb_to_name(*self.app.selected_rgb)
-            color_preview.itemconfig(preview_rect, fill=self.app.selected_hex)
-            preview_text.config(text=f"{color_name}\nRGB{self.app.selected_rgb}\n{self.app.selected_hex}")
-
-        def move_hue_indicator(x):
-            nonlocal hue_indicator
-            x = max(0, min(hue_width - 1, x))
-            if hue_indicator is None:
-                hue_indicator = hue_canvas.create_line(x, 0, x, hue_height, fill="white", width=3)
-            else:
-                hue_canvas.coords(hue_indicator, x, 0, x, hue_height)
-
-        def move_color_indicator(x, y):
-            x = max(0, min(color_canvas_size - 1, x))
-            y = max(0, min(color_canvas_size - 1, y))
-            color_canvas.coords(color_indicator, x - 5, y - 5, x + 5, y + 5)
-
-        def on_hue_pick(event):
-            self.app.current_hue = (max(0, min(hue_width - 1, event.x)) / (hue_width - 1)) * 360
-            move_hue_indicator(event.x)
-            make_color_square()
-
-        def on_color_pick(event):
-            x = max(0, min(color_canvas_size - 1, event.x))
-            y = max(0, min(color_canvas_size - 1, event.y))
-
-            s = x / (color_canvas_size - 1)
-            v = 1 - (y / (color_canvas_size - 1))
-            r, g, b = colorsys.hsv_to_rgb(self.app.current_hue / 360, s, v)
-            rgb = (int(r * 255), int(g * 255), int(b * 255))
-
-            move_color_indicator(x, y)
-            update_preview(rgb)
-
-        make_hue_bar()
-        make_color_square()
-        move_hue_indicator(140)
-        move_color_indicator(90, 55)
-        update_preview(self.app.selected_rgb)
-
-        hue_canvas.bind("<Button-1>", on_hue_pick)
-        hue_canvas.bind("<B1-Motion>", on_hue_pick)
-        color_canvas.bind("<Button-1>", on_color_pick)
-        color_canvas.bind("<B1-Motion>", on_color_pick)
-
-        button_frame = tk.Frame(form_card, bg="white")
-        button_frame.pack(pady=(18, 20))
-
-        def save_clothing():
-            feature_text = feature_entry.get().strip()
-            if feature_text == "" or feature_text == "예: 오버핏, 얇음, 캐주얼":
-                feature_text = "특징 없음"
-
-            r, g, b = self.app.selected_rgb
-            color_hex = self.app.selected_hex
-            color_name = rgb_to_name(r, g, b)
-
-            item = Clothing(
+            result = recommend_from_photo_backend(
+                color_name=main_color["name"],
                 category=category_var.get(),
-                detail=detail_var.get(),
-                feature=feature_text,
-                rgb=(r, g, b),
-                hex_code=color_hex,
-                color_name=color_name
+                target_category="하의"
             )
 
-            self.app.clothes.append(item)
+            recommended = ", ".join(result.get("recommended_colors", []))
+            avoid = ", ".join(result.get("avoid_colors", []))
+
             messagebox.showinfo(
-                "저장 완료",
-                f"{item.category} / {item.detail} 옷이 저장되었습니다.\n선택 색상: {item.color_name} RGB{item.rgb}"
+                "사진 기반 추천 결과",
+                f"선택한 색상: {result.get('base_color', main_color['name'])}\n\n"
+                f"추천 대상: {result.get('target_category', '하의')}\n\n"
+                f"추천 색상: {recommended}\n\n"
+                f"피하면 좋은 색상: {avoid}\n\n"
+                f"이유: {result.get('reason', '추천 이유가 없습니다.')}"
             )
-            canvas.unbind_all("<MouseWheel>")
-            self.app.show_home()
 
         tk.Button(
-            button_frame,
-            text="저장하기",
-            font=("Arial", 12, "bold"),
-            bg="#47c95a",
+            form_card,
+            text="사진 색상으로 추천받기",
+            font=("Arial", 11, "bold"),
+            bg="#2f80ff",
             fg="white",
-            width=12,
             height=2,
             bd=0,
-            command=save_clothing
-        ).grid(row=0, column=0, padx=8)
-
-        tk.Button(
-            button_frame,
-            text="뒤로가기",
-            font=("Arial", 12),
-            bg="#d9dee8",
-            fg="#222222",
-            width=12,
-            height=2,
-            bd=0,
-            command=lambda: [canvas.unbind_all("<MouseWheel>"), self.show_register_options()]
-        ).grid(row=0, column=1, padx=8)
+            command=recommend_by_photo
+        ).pack(fill="x", padx=18, pady=(10, 14))

@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 .DS_Store
 clothing_app/clothes_data.json
+clothing_app/data/*.json

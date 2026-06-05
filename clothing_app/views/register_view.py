@@ -1,9 +1,16 @@
+"""옷 등록 화면. 사진 / 직접 입력 선택, 백엔드에 저장."""
 import flet as ft
-import os
+from pathlib import Path
 from model.clothing import Clothing
 from logic.color_logic import rgb_to_hex, rgb_to_name
 from views.theme import COLORS, RADIUS, SPACE, FONT
 from views.components import top_bar, card, primary_button, section_title
+
+try:
+    from api_client import add_clothing_to_backend
+except Exception:
+    def add_clothing_to_backend(item, user_id="guest"):
+        return {"error": "backend not available"}
 
 
 DETAIL_OPTIONS = {
@@ -13,11 +20,11 @@ DETAIL_OPTIONS = {
 }
 
 
-def build_register_options_view(page, go, clothes_store):
-    """옷 등록 방법 선택 화면."""
+def build_register_options_view(page, go, current_user):
+    """옷 등록 방법 선택."""
 
     file_picker = ft.FilePicker(
-        on_result=lambda e: handle_file_pick(e, page, go, clothes_store)
+        on_result=lambda e: handle_file_pick(e, page, go, current_user)
     )
     page.overlay.append(file_picker)
 
@@ -33,33 +40,23 @@ def build_register_options_view(page, go, clothes_store):
                 [
                     ft.Container(
                         content=ft.Icon(icon, color="white", size=28),
-                        width=56,
-                        height=56,
+                        width=56, height=56,
                         bgcolor=color,
                         border_radius=RADIUS["md"],
                         alignment=ft.alignment.center,
                     ),
                     ft.Column(
                         [
-                            ft.Text(
-                                title,
-                                size=FONT["title_sm"],
-                                weight=ft.FontWeight.W_700,
-                                color=COLORS["text_primary"],
-                            ),
-                            ft.Text(
-                                desc,
-                                size=FONT["body_sm"],
-                                color=COLORS["text_secondary"],
-                            ),
+                            ft.Text(title, size=FONT["title_sm"],
+                                    weight=ft.FontWeight.W_700,
+                                    color=COLORS["text_primary"]),
+                            ft.Text(desc, size=FONT["body_sm"],
+                                    color=COLORS["text_secondary"]),
                         ],
                         spacing=2,
                         expand=True,
                     ),
-                    ft.Icon(
-                        ft.Icons.CHEVRON_RIGHT_ROUNDED,
-                        color=COLORS["text_tertiary"],
-                    ),
+                    ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=COLORS["text_tertiary"]),
                 ],
                 spacing=SPACE["md"],
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -83,32 +80,21 @@ def build_register_options_view(page, go, clothes_store):
                 content=ft.Column(
                     [
                         ft.Container(height=SPACE["md"]),
-                        ft.Text(
-                            "어떻게 등록할까요?",
-                            size=FONT["title"],
-                            weight=ft.FontWeight.W_700,
-                            color=COLORS["text_primary"],
-                        ),
-                        ft.Text(
-                            "방법을 선택해주세요",
-                            size=FONT["body_sm"],
-                            color=COLORS["text_secondary"],
-                        ),
+                        ft.Text("어떻게 등록할까요?",
+                                size=FONT["title"],
+                                weight=ft.FontWeight.W_700,
+                                color=COLORS["text_primary"]),
+                        ft.Text("방법을 선택해주세요",
+                                size=FONT["body_sm"],
+                                color=COLORS["text_secondary"]),
                         ft.Container(height=SPACE["lg"]),
-                        option_card(
-                            "사진으로 등록",
-                            "갤러리에서 옷 사진 선택",
-                            ft.Icons.PHOTO_CAMERA_ROUNDED,
-                            COLORS["pink"],
-                            pick_photo,
-                        ),
-                        option_card(
-                            "직접 입력",
-                            "종류, 색상 등 정보 입력",
-                            ft.Icons.EDIT_NOTE_ROUNDED,
-                            COLORS["primary"],
-                            lambda e: go("/register_direct"),
-                        ),
+                        option_card("사진으로 등록", "갤러리에서 옷 사진 선택",
+                                    ft.Icons.PHOTO_CAMERA_ROUNDED,
+                                    COLORS["pink"], pick_photo),
+                        option_card("직접 입력", "종류, 색상 등 정보 입력",
+                                    ft.Icons.EDIT_NOTE_ROUNDED,
+                                    COLORS["primary"],
+                                    lambda e: go("/register_direct")),
                     ],
                     spacing=SPACE["md"],
                 ),
@@ -121,11 +107,11 @@ def build_register_options_view(page, go, clothes_store):
     )
 
 
-def handle_file_pick(e, page, go, clothes_store):
-    """사진 선택 후 처리."""
+def handle_file_pick(e, page, go, current_user):
+    """사진 선택 처리 (OS 호환 경로)."""
     if e.files:
-        file_path = e.files[0].path
-        file_name = os.path.basename(file_path)
+        file_path = Path(e.files[0].path).resolve()
+        file_name = file_path.name
         item = Clothing(
             category="사진등록",
             detail=file_name,
@@ -133,19 +119,27 @@ def handle_file_pick(e, page, go, clothes_store):
             rgb=(0, 0, 0),
             hex_code="#cccccc",
             color_name="미분석",
-            image_path=file_path,
+            image_path=str(file_path),
         )
-        clothes_store.append(item)
+
+        # 백엔드에 저장 시도
+        user_id = current_user.get("user_id", "guest")
+        result = add_clothing_to_backend(item, user_id)
+
+        msg = "사진이 등록되었습니다"
+        if isinstance(result, dict) and "error" in result:
+            msg = "사진 등록됨 (오프라인)"
+
         page.open(
             ft.SnackBar(
-                content=ft.Text(f"{file_name} 등록되었습니다"),
+                content=ft.Text(f"{file_name} {msg}"),
                 bgcolor=COLORS["green"],
             )
         )
         go("/")
 
 
-def build_register_direct_view(page, go, clothes_store):
+def build_register_direct_view(page, go, current_user):
     """직접 입력 등록 화면."""
 
     selected = {"r": 90, "g": 130, "b": 255}
@@ -158,14 +152,12 @@ def build_register_direct_view(page, go, clothes_store):
     )
     color_name_label = ft.Text(
         rgb_to_name(**selected),
-        size=FONT["title_sm"],
-        weight=ft.FontWeight.W_700,
+        size=FONT["title_sm"], weight=ft.FontWeight.W_700,
         color=COLORS["text_primary"],
     )
     color_hex_label = ft.Text(
         rgb_to_hex(**selected),
-        size=FONT["body_sm"],
-        color=COLORS["text_tertiary"],
+        size=FONT["body_sm"], color=COLORS["text_tertiary"],
     )
 
     def update_color():
@@ -179,10 +171,8 @@ def build_register_direct_view(page, go, clothes_store):
     def channel_slider(channel, accent):
         value_text = ft.Text(
             str(selected[channel]),
-            size=FONT["body_sm"],
-            color=COLORS["text_secondary"],
-            weight=ft.FontWeight.W_600,
-            width=32,
+            size=FONT["body_sm"], color=COLORS["text_secondary"],
+            weight=ft.FontWeight.W_600, width=32,
             text_align=ft.TextAlign.RIGHT,
         )
         def on_change(e):
@@ -198,11 +188,9 @@ def build_register_direct_view(page, go, clothes_store):
                     bgcolor=accent, border_radius=RADIUS["sm"],
                     alignment=ft.alignment.center,
                 ),
-                ft.Slider(
-                    min=0, max=255, value=selected[channel],
-                    divisions=255, expand=True,
-                    active_color=accent, on_change=on_change,
-                ),
+                ft.Slider(min=0, max=255, value=selected[channel],
+                          divisions=255, expand=True,
+                          active_color=accent, on_change=on_change),
                 value_text,
             ],
             spacing=SPACE["sm"],
@@ -247,10 +235,18 @@ def build_register_direct_view(page, go, clothes_store):
             hex_code=rgb_to_hex(r, g, b),
             color_name=rgb_to_name(r, g, b),
         )
-        clothes_store.append(item)
+
+        user_id = current_user.get("user_id", "guest")
+        result = add_clothing_to_backend(item, user_id)
+
+        if isinstance(result, dict) and "error" in result:
+            msg = "저장됨 (오프라인)"
+        else:
+            msg = "저장 완료"
+
         page.open(
             ft.SnackBar(
-                content=ft.Text(f"{item.category} · {item.detail} 저장됨"),
+                content=ft.Text(f"{item.category} · {item.detail} {msg}"),
                 bgcolor=COLORS["green"],
             )
         )

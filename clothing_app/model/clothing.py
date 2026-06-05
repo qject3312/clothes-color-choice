@@ -9,6 +9,7 @@ class Clothing:
         color_name,
         image_path="",
         colors=None,
+        clothing_id=None
     ):
         self.category = category
         self.detail = detail
@@ -18,15 +19,14 @@ class Clothing:
         self.color_name = color_name
         self.image_path = image_path
 
+        # 사진에서 스포이드로 여러 색을 뽑았을 때 저장
+        # 예: [{"rgb": (255, 255, 255), "hex": "#ffffff", "name": "흰색"}]
+        self.id = clothing_id
+
         self.colors = colors if colors is not None else [
-            {"rgb": rgb, "hex": hex_code, "name": color_name}
+            {
+                "rgb": rgb,
+                "hex": hex_code,
+                "name": color_name
+            }
         ]
-
-
-class Outfit:
-    """코디 (상의 + 하의 + 아우터 조합)"""
-    def __init__(self, top=None, bottom=None, outer=None, note=""):
-        self.top = top
-        self.bottom = bottom
-        self.outer = outer
-        self.note = note

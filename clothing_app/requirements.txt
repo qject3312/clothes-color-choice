@@ -1,0 +1,7 @@
+flet>=0.21.0
+fastapi
+uvicorn
+requests
+pillow
+pydantic
+pyinstaller

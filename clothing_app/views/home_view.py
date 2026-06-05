@@ -1,9 +1,26 @@
+"""홈 화면. 6개 메뉴 카드 + 사용자 정보."""
 import flet as ft
 from views.theme import COLORS, RADIUS, SPACE, FONT
 
+try:
+    from api_client import get_clothes_from_backend
+except Exception:
+    def get_clothes_from_backend(user_id="guest"):
+        return []
 
-def build_home_view(page, go, clothes_store):
+
+def build_home_view(page, go, current_user, logout_fn):
     """홈 화면."""
+
+    user_id = current_user.get("user_id", "guest")
+    nickname = current_user.get("nickname", "게스트")
+
+    # 옷 개수 조회 시도
+    try:
+        clothes = get_clothes_from_backend(user_id)
+        cloth_count = len(clothes) if isinstance(clothes, list) else 0
+    except Exception:
+        cloth_count = 0
 
     def menu_card(title, subtitle, icon, color, route):
         return ft.Container(
@@ -11,24 +28,19 @@ def build_home_view(page, go, clothes_store):
                 [
                     ft.Container(
                         content=ft.Icon(icon, color=COLORS["text_on_color"], size=26),
-                        width=48,
-                        height=48,
+                        width=48, height=48,
                         bgcolor=color,
                         border_radius=RADIUS["md"],
                         alignment=ft.alignment.center,
                     ),
                     ft.Container(height=4),
-                    ft.Text(
-                        title,
-                        size=FONT["title_sm"],
-                        weight=ft.FontWeight.W_700,
-                        color=COLORS["text_primary"],
-                    ),
-                    ft.Text(
-                        subtitle,
-                        size=FONT["caption"],
-                        color=COLORS["text_tertiary"],
-                    ),
+                    ft.Text(title,
+                            size=FONT["title_sm"],
+                            weight=ft.FontWeight.W_700,
+                            color=COLORS["text_primary"]),
+                    ft.Text(subtitle,
+                            size=FONT["caption"],
+                            color=COLORS["text_tertiary"]),
                 ],
                 spacing=4,
                 horizontal_alignment=ft.CrossAxisAlignment.START,
@@ -48,41 +60,43 @@ def build_home_view(page, go, clothes_store):
         )
 
     def open_menu(_):
-        """햄버거 메뉴 = 좌측 드로어 (Bottom sheet으로 대체)"""
-        page.open(
-            ft.AlertDialog(
-                modal=False,
-                title=ft.Text("메뉴", weight=ft.FontWeight.BOLD),
-                content=ft.Column(
-                    [
-                        ft.TextButton(
-                            "내 옷장",
-                            on_click=lambda e: (page.close(e.control.parent.parent.parent), go("/list")),
-                        ),
-                        ft.TextButton(
-                            "온도별 추천",
-                            on_click=lambda e: (page.close(e.control.parent.parent.parent), go("/temperature")),
-                        ),
-                        ft.TextButton(
-                            "오늘의 추천",
-                            on_click=lambda e: (page.close(e.control.parent.parent.parent), go("/coordinate")),
-                        ),
-                    ],
-                    tight=True,
-                ),
-            )
+        dlg = ft.AlertDialog(
+            modal=False,
+            title=ft.Text("메뉴", weight=ft.FontWeight.BOLD),
+            content=ft.Column(
+                [
+                    ft.TextButton(
+                        "내 옷장",
+                        on_click=lambda e: (page.close(dlg), go("/list")),
+                    ),
+                    ft.TextButton(
+                        "온도별 추천",
+                        on_click=lambda e: (page.close(dlg), go("/temperature")),
+                    ),
+                    ft.TextButton(
+                        "코디해보기",
+                        on_click=lambda e: (page.close(dlg), go("/coordinate")),
+                    ),
+                    ft.Divider(),
+                    ft.TextButton(
+                        "로그아웃",
+                        on_click=lambda e: (page.close(dlg), logout_fn()),
+                        style=ft.ButtonStyle(color=COLORS["pink"]),
+                    ),
+                ],
+                tight=True,
+            ),
         )
+        page.open(dlg)
 
     count_badge = ft.Container(
         content=ft.Row(
             [
                 ft.Icon(ft.Icons.CHECKROOM_ROUNDED, color=COLORS["primary"], size=16),
-                ft.Text(
-                    f"등록된 옷 {len(clothes_store)}벌",
-                    size=FONT["body_sm"],
-                    color=COLORS["primary"],
-                    weight=ft.FontWeight.W_600,
-                ),
+                ft.Text(f"등록된 옷 {cloth_count}벌",
+                        size=FONT["body_sm"],
+                        color=COLORS["primary"],
+                        weight=ft.FontWeight.W_600),
             ],
             spacing=6,
             tight=True,
@@ -104,21 +118,15 @@ def build_home_view(page, go, clothes_store):
                             icon_size=22,
                             on_click=open_menu,
                         ),
-                        ft.Text(
-                            "옷 추천 앱",
-                            size=FONT["title"],
-                            weight=ft.FontWeight.BOLD,
-                            color=COLORS["text_primary"],
-                        ),
+                        ft.Text("옷 추천 앱",
+                                size=FONT["title"],
+                                weight=ft.FontWeight.BOLD,
+                                color=COLORS["text_primary"]),
                         ft.IconButton(
                             content=ft.Container(
-                                content=ft.Icon(
-                                    ft.Icons.PERSON_ROUNDED,
-                                    color=COLORS["text_secondary"],
-                                    size=20,
-                                ),
-                                width=40,
-                                height=40,
+                                content=ft.Icon(ft.Icons.PERSON_ROUNDED,
+                                                color=COLORS["text_secondary"], size=20),
+                                width=40, height=40,
                                 bgcolor=COLORS["bg"],
                                 border_radius=20,
                                 alignment=ft.alignment.center,
@@ -135,18 +143,14 @@ def build_home_view(page, go, clothes_store):
             ft.Container(
                 content=ft.Column(
                     [
-                        ft.Text(
-                            "안녕하세요 👋",
-                            size=FONT["heading"],
-                            weight=ft.FontWeight.BOLD,
-                            color=COLORS["text_primary"],
-                        ),
+                        ft.Text(f"안녕하세요, {nickname}님 👋",
+                                size=FONT["heading"],
+                                weight=ft.FontWeight.BOLD,
+                                color=COLORS["text_primary"]),
                         ft.Container(height=2),
-                        ft.Text(
-                            "오늘은 어떤 옷을 입어볼까요?",
-                            size=FONT["body"],
-                            color=COLORS["text_secondary"],
-                        ),
+                        ft.Text("오늘은 어떤 옷을 입어볼까요?",
+                                size=FONT["body"],
+                                color=COLORS["text_secondary"]),
                         ft.Container(height=10),
                         ft.Row([count_badge], alignment=ft.MainAxisAlignment.START),
                     ],
@@ -157,7 +161,7 @@ def build_home_view(page, go, clothes_store):
                     top=SPACE["xl"], bottom=SPACE["lg"],
                 ),
             ),
-            # 메뉴 그리드
+            # 메뉴 그리드 (2x3)
             ft.Container(
                 content=ft.Column(
                     [
@@ -183,8 +187,8 @@ def build_home_view(page, go, clothes_store):
                             [
                                 menu_card("내 옷장", "등록한 옷 보기",
                                           ft.Icons.CHECKROOM_ROUNDED, COLORS["indigo"], "/list"),
-                                menu_card("나의 코디", "저장한 조합",
-                                          ft.Icons.STYLE_ROUNDED, COLORS["gray"], "/my_outfits"),
+                                menu_card("오늘의 코디", "추천 코디",
+                                          ft.Icons.STYLE_ROUNDED, COLORS["gray"], "/today"),
                             ],
                             spacing=SPACE["md"],
                         ),

@@ -4,7 +4,6 @@ from views.theme import COLORS, RADIUS, SPACE, FONT
 
 
 def top_bar(title, on_back, right_action=None):
-    """상단바. 뒤로가기 + 제목 + 우측 액션."""
     right = right_action if right_action else ft.Container(width=40)
     return ft.Container(
         content=ft.Row(
@@ -30,7 +29,6 @@ def top_bar(title, on_back, right_action=None):
 
 
 def card(child, padding_=None):
-    """하얀 카드. 그림자 + 둥근 모서리."""
     if padding_ is None:
         padding_ = SPACE["lg"]
     return ft.Container(
@@ -47,7 +45,6 @@ def card(child, padding_=None):
 
 
 def primary_button(text, on_click, icon=None, color=None):
-    """주요 액션 버튼."""
     if color is None:
         color = COLORS["primary"]
 
@@ -76,7 +73,6 @@ def primary_button(text, on_click, icon=None, color=None):
 
 
 def empty_state(icon, title, subtitle, action_text=None, on_action=None, color=None):
-    """빈 상태 화면. 아이콘 + 제목 + 부제목 + 액션."""
     if color is None:
         color = COLORS["primary"]
     children = [
@@ -136,31 +132,7 @@ def empty_state(icon, title, subtitle, action_text=None, on_action=None, color=N
     )
 
 
-def color_chip(color_hex, color_name, size=40):
-    """색상 + 이름 표시."""
-    return ft.Row(
-        [
-            ft.Container(
-                width=size,
-                height=size,
-                bgcolor=color_hex,
-                border_radius=RADIUS["md"],
-                border=ft.border.all(1, COLORS["border"]),
-            ),
-            ft.Text(
-                color_name,
-                size=FONT["body_sm"],
-                color=COLORS["text_secondary"],
-                weight=ft.FontWeight.W_500,
-            ),
-        ],
-        spacing=8,
-        tight=True,
-    )
-
-
 def section_title(text):
-    """섹션 제목."""
     return ft.Text(
         text,
         size=FONT["title_sm"],

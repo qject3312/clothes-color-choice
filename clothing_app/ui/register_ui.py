@@ -464,13 +464,20 @@ class RegisterUI:
 
             if isinstance(result, dict) and "id" in result:
                 item.id = result["id"]
-
-            self.app.clothes.append(item)
+                self.app.clothes.append(item)
+            elif isinstance(result, dict) and "error" in result:
+                messagebox.showerror(
+                    "저장 실패",
+                    "서버 저장에 실패해서 옷장에 추가하지 않았습니다.\n앱을 다시 실행했을 때 사라지는 문제를 막기 위해 저장 성공한 옷만 추가합니다."
+                )
+                return
+            else:
+                self.app.clothes.append(item)
 
             if isinstance(result, dict) and "error" in result:
                 messagebox.showwarning(
                     "백엔드 저장 실패",
-                    "앱 화면에는 추가했지만 서버 저장은 실패했습니다.\n백엔드 서버가 켜져 있는지 확인해 주세요."
+                    "서버 저장에 실패했습니다."
                 )
             else:
                 messagebox.showinfo(

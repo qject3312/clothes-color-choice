@@ -57,6 +57,7 @@ class BaseItemRecommendUI:
         "베이지": {"top": ["흰색", "검정", "네이비", "브라운"], "bottom": ["중청", "흰색", "브라운", "카키"], "outer": ["브라운", "네이비", "카키", "아이보리"], "mood": "부드러운 색이라 브라운 계열이나 네이비와 잘 맞습니다."},
         "회색": {"top": ["흰색", "검정", "네이비", "파랑"], "bottom": ["검정", "중청", "네이비", "흰색"], "outer": ["검정", "네이비", "베이지"], "mood": "튀지 않고 차분해서 무채색 또는 네이비와 안정적으로 어울립니다."},
         "노랑": {"top": ["흰색", "아이보리", "네이비", "회색"], "bottom": ["중청", "연청", "흰색", "베이지", "검정"], "outer": ["아이보리", "네이비", "데님"], "mood": "밝은 포인트 색이라 나머지는 기본색으로 눌러주면 좋습니다."},
+        "빨강": {"top": ["흰색", "아이보리", "검정", "회색", "네이비"], "bottom": ["중청", "연청", "검정", "베이지", "회색"], "outer": ["검정", "네이비", "데님", "회색", "아이보리"], "mood": "빨강은 시선이 강한 포인트 색이라 나머지는 흰색, 검정, 데님처럼 차분한 색으로 맞추면 안정적입니다."},
         "브라운": {"top": ["흰색", "아이보리", "베이지", "네이비"], "bottom": ["중청", "아이보리", "베이지", "카키"], "outer": ["베이지", "아이보리", "카키"], "mood": "따뜻한 느낌이 강해서 아이보리, 베이지 계열과 자연스럽습니다."},
         "보라": {"top": ["흰색", "회색", "아이보리", "검정"], "bottom": ["검정", "중청", "흰색", "회색"], "outer": ["회색", "검정", "아이보리"], "mood": "보라색은 포인트가 강하므로 나머지는 차분한 색이 좋습니다."},
     }
@@ -69,13 +70,14 @@ class BaseItemRecommendUI:
         "그레이": "회색", "연회색": "회색", "차콜": "회색",
         "카멜": "브라운", "갈색": "브라운",
         "노란색": "노랑", "옐로우": "노랑",
+        "빨간색": "빨강", "빨강색": "빨강", "레드": "빨강", "버건디": "빨강",
         "퍼플": "보라", "보라색": "보라",
     }
 
     COLOR_SWATCH = {
         "흰색": "#f7f7f7", "아이보리": "#f3ead7", "검정": "#222222", "회색": "#9ca3af", "네이비": "#1e3a8a",
         "베이지": "#d6b98c", "브라운": "#8b5a2b", "카키": "#7c8450", "파랑": "#2563eb", "하늘색": "#93c5fd",
-        "중청": "#3b82f6", "연청": "#bfdbfe", "노랑": "#facc15", "데님": "#315f9d", "보라": "#8b5cf6",
+        "중청": "#3b82f6", "연청": "#bfdbfe", "노랑": "#facc15", "빨강": "#ef4444", "데님": "#315f9d", "보라": "#8b5cf6",
     }
 
     TYPE_RULES = {
@@ -224,7 +226,10 @@ class BaseItemRecommendUI:
         for key, value in self.ALIAS.items():
             if key in text:
                 return value
-        return color if color in self.COLOR_RULES else "흰색"
+        if color in self.COLOR_RULES:
+            return color
+        # 알 수 없는 색상을 흰색으로 잘못 표시하지 않고, 기본 추천 규칙만 사용합니다.
+        return color or "기본"
 
     def _recommend(self):
         for w in self._result_area.winfo_children():
@@ -235,7 +240,12 @@ class BaseItemRecommendUI:
             return
         cat = self._simple_category(item)
         base_color = self._normalize_color(_color(item), _detail(item))
-        rules = self.COLOR_RULES.get(base_color, self.COLOR_RULES["흰색"])
+        rules = self.COLOR_RULES.get(base_color, {
+            "top": ["흰색", "검정", "회색", "베이지", "네이비"],
+            "bottom": ["중청", "검정", "베이지", "회색", "네이비"],
+            "outer": ["검정", "네이비", "베이지", "회색", "데님"],
+            "mood": "등록한 색상을 기준으로 기본색과 데님 중심의 안정적인 조합을 추천했습니다."
+        })
         targets = [("상의", "top"), ("하의", "bottom"), ("아우터", "outer")]
         targets = [(name, key) for name, key in targets if name != cat]
         recs = {}

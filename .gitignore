@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+clothing_app/clothes_data.json
+clothing_app/data/*.json
+clothing_app/images/clothes/*
+clothing_app/clothes.db
+*.db

@@ -1,0 +1,7 @@
+pillow
+requests
+fastapi
+uvicorn
+sqlalchemy
+python-multipart
+flet

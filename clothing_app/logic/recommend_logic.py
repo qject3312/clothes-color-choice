@@ -154,3 +154,97 @@ def get_temperature_recommendation(temp):
             "reason": "추운 날씨라 보온이 가장 중요합니다.",
             "avoid": "반팔, 반바지, 얇은 셔츠"
         }
+    
+def is_good_color_match(color1, color2):
+    neutral_colors = ["검정", "흰색", "회색", "베이지", "네이비", "미분석"]
+
+    if color1 in neutral_colors or color2 in neutral_colors:
+        return True, "무채색 또는 기본 색상이 포함되어 안정적인 조합입니다."
+
+    good_matches = [
+        ("파랑", "흰색"),
+        ("파랑", "베이지"),
+        ("네이비", "흰색"),
+        ("네이비", "회색"),
+        ("카키", "흰색"),
+        ("카키", "검정"),
+        ("브라운", "베이지"),
+        ("브라운", "흰색"),
+        ("빨강", "검정"),
+        ("초록", "베이지"),
+    ]
+
+    for a, b in good_matches:
+        if (color1 == a and color2 == b) or (color1 == b and color2 == a):
+            return True, f"{color1}와 {color2}는 서로 잘 어울리는 색 조합입니다."
+
+    return False, f"{color1}와 {color2}는 강한 조합일 수 있어 무채색 아이템과 함께 매치하는 것이 좋습니다."
+
+
+def recommend_outfit(clothes):
+    tops = [item for item in clothes if item.category == "상의"]
+    bottoms = [item for item in clothes if item.category == "하의"]
+    outers = [item for item in clothes if item.category == "아우터"]
+
+    if not tops or not bottoms:
+        return {
+            "success": False,
+            "message": "추천을 위해서는 최소한 상의와 하의를 등록해야 합니다.",
+            "top": None,
+            "bottom": None,
+            "outer": None,
+            "reason": ""
+        }
+
+    for top in tops:
+        for bottom in bottoms:
+            is_good, reason = is_good_color_match(top.color_name, bottom.color_name)
+
+            if is_good:
+                return {
+                    "success": True,
+                    "message": "추천 코디를 찾았습니다.",
+                    "top": top,
+                    "bottom": bottom,
+                    "outer": outers[0] if outers else None,
+                    "reason": reason
+                }
+
+    return {
+        "success": True,
+        "message": "기본 추천 코디입니다.",
+        "top": tops[0],
+        "bottom": bottoms[0],
+        "outer": outers[0] if outers else None,
+        "reason": "완벽한 색 조합은 아니지만, 등록된 옷 중 기본 조합으로 추천합니다."
+    }
+
+
+def recommend_by_temperature(clothes, temperature):
+    if temperature >= 28:
+        preferred_details = ["반팔", "민소매", "반바지", "얇은 바지"]
+    elif temperature >= 23:
+        preferred_details = ["반팔", "셔츠", "얇은 바지", "청바지"]
+    elif temperature >= 17:
+        preferred_details = ["긴팔", "셔츠", "맨투맨", "청바지", "슬랙스", "가디건", "얇은 자켓"]
+    elif temperature >= 10:
+        preferred_details = ["니트", "맨투맨", "후드티", "청바지", "슬랙스", "자켓", "집업"]
+    else:
+        preferred_details = ["기모 맨투맨", "후드티", "두꺼운 바지", "패딩", "코트", "후리스"]
+
+    filtered_clothes = [
+        item for item in clothes
+        if item.detail in preferred_details
+    ]
+
+    if len(filtered_clothes) >= 2:
+        result = recommend_outfit(filtered_clothes)
+        if result["success"]:
+            result["message"] = f"{temperature}도 날씨에 맞는 추천 코디입니다."
+            return result
+
+    result = recommend_outfit(clothes)
+    if result["success"]:
+        result["message"] = f"{temperature}도 기준으로 필터링된 옷이 부족해 전체 옷장에서 추천했습니다."
+
+    return result

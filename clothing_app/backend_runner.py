@@ -11,7 +11,7 @@ import urllib.request
 from app_paths import BASE_DIR
 
 BACKEND_HOST = "127.0.0.1"
-BACKEND_PORT = 8765
+BACKEND_PORT = 8000
 _backend_process = None
 _backend_server = None
 

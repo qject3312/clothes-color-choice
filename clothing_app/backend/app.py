@@ -7,7 +7,6 @@ from backend.schemas import ClothingCreate, ClothingUpdate, OutfitEvaluateReques
 from backend.outfit_logic import evaluate_outfit, make_search_keyword, recommend_by_cloth
 from logic.recommend_logic import get_color_style_info
 from pydantic import BaseModel
-from app_paths import BASE_DIR, DB_PATH
 
 app = FastAPI()
 init_db()
@@ -35,11 +34,6 @@ def _user_row_to_dict(row):
 @app.get("/")
 def home():
     return {"message": "Clothing recommendation backend is running"}
-
-
-@app.get("/app-info")
-def app_info():
-    return {"base_dir": str(BASE_DIR), "db_path": str(DB_PATH)}
 
 
 @app.post("/users")

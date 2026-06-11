@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FitPick Django Dashboard</title>
+  <style>
+    :root { color-scheme: light; --ink: #20222a; --muted: #6f7280; --line: #e7e5ee; --brand: #7357c7; --soft: #f6f2ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: #faf9fc; font-family: system-ui, -apple-system, "Malgun Gothic", sans-serif; }
+    main { width: min(1100px, calc(100% - 32px)); margin: 48px auto; }
+    header, section { background: white; border: 1px solid var(--line); border-radius: 20px; padding: 24px; box-shadow: 0 12px 35px rgba(50, 40, 80, .06); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    h1, h2 { margin: 0; }
+    p { color: var(--muted); margin-bottom: 0; }
+    a { color: white; background: var(--brand); border-radius: 12px; padding: 11px 16px; text-decoration: none; white-space: nowrap; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 18px 0; }
+    .card { background: var(--soft); border: 1px solid #e8ddff; border-radius: 16px; padding: 18px; }
+    .card strong { display: block; color: var(--brand); font-size: 28px; margin-top: 5px; }
+    section { margin-top: 18px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 12px 10px; text-align: left; white-space: nowrap; }
+    th { color: var(--muted); font-size: 13px; }
+    .swatch { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 50%; margin-right: 7px; vertical-align: -2px; }
+    code { color: var(--brand); overflow-wrap: anywhere; }
+    @media (max-width: 680px) { header { align-items: flex-start; flex-direction: column; } main { margin: 20px auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>FitPick Django Dashboard</h1>
+      <p>기존 FastAPI와 SQLite 데이터를 Django 웹 화면에서 확인합니다.</p>
+    </div>
+    <a href="{{ fastapi_docs_url }}" target="_blank" rel="noreferrer">FastAPI 문서 열기</a>
+  </header>
+
+  <div class="cards">
+    {% for label, count in counts.items %}
+      <div class="card">{{ label }}<strong>{{ count }}</strong></div>
+    {% endfor %}
+  </div>
+
+  <section>
+    <h2>최근 등록된 옷</h2>
+    {% if recent_clothes %}
+      <table>
+        <thead><tr><th>ID</th><th>사용자</th><th>분류</th><th>상세</th><th>색상</th><th>등록일</th></tr></thead>
+        <tbody>
+        {% for item in recent_clothes %}
+          <tr>
+            <td>{{ item.id }}</td>
+            <td>{{ item.user_id }}</td>
+            <td>{{ item.category }}</td>
+            <td>{{ item.detail }}</td>
+            <td><span class="swatch" style="background: {{ item.color_hex|default:'#ddd' }}"></span>{{ item.color_name }}</td>
+            <td>{{ item.created_at }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>등록된 옷이 없습니다.</p>
+    {% endif %}
+    <p>Shared SQLite: <code>{{ db_path }}</code></p>
+  </section>
+</main>
+</body>
+</html>

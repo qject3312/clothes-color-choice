@@ -1,213 +1,264 @@
-import tkinter as tk
+"""
+핏픽 - Flet 메인 진입점
+- 백엔드(FastAPI) 자동 실행
+- 전역 상태 관리 (user, clothes, saved_outfits)
+- 라우터 (go 함수)
+- 햄버거 메뉴
+- Windows / macOS 호환
+"""
+import sys
+import platform
+import flet as ft
 
-from ui.main_ui import MainUI
-from ui.register_ui import RegisterUI
-from ui.clothes_ui import ClothesUI
-from ui.today_recommend_ui import TodayRecommendUI
-from ui.temperature_ui import TemperatureUI
+# ─── 백엔드 자동 시작 ───
+try:
+    from backend_runner import start_backend_if_needed
+    start_backend_if_needed()
+except Exception as e:
+    print(f"[WARN] 백엔드 자동 시작 실패: {e}")
+
+# ─── API 클라이언트 ───
+try:
+    from api_client import (
+        get_clothes_from_backend,
+        get_saved_outfits_backend,
+        save_outfit_backend,
+    )
+except Exception:
+    def get_clothes_from_backend(uid="guest"): return []
+    def get_saved_outfits_backend(uid="guest"): return []
+    def save_outfit_backend(o, uid="guest"): return {}
+
+from model.clothing import Clothing
+from app_paths import resolve_existing_path
+
+# ─── 뷰 임포트 ───
+from views.auth_view        import build_login, build_signup
+from views.home_view        import build_home
+from views.register_view    import build_register_options, build_register_photo, build_register_direct
+from views.clothes_view     import build_clothes, build_clothes_edit
+from views.recommend_view   import (build_recommend, build_coordination,
+                                    build_temperature, build_today,
+                                    build_personal_recommend, build_outfit)
+from views.profile_view     import build_profile, build_edit_profile
+from views.base_recommend_view import build_base_recommend
+from views.theme            import C
+
+IS_WINDOWS = platform.system() == "Windows"
+IS_MAC     = platform.system() == "Darwin"
 
 
-class ClothingApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("옷 추천 앱")
-        self.root.geometry("430x780")
-        self.root.configure(bg="#f4f6fb")
-        self.root.resizable(False, False)
+def get_font():
+    if IS_MAC:     return "Apple SD Gothic Neo"
+    if IS_WINDOWS: return "Malgun Gothic"
+    return "Noto Sans CJK KR"
 
-        self.clothes = []
 
-        self.detail_options = {
-            "상의": [
-                "반팔", "긴팔", "셔츠", "니트", "맨투맨",
-                "후드티", "블라우스", "민소매", "기모 맨투맨"
-            ],
-            "하의": [
-                "청바지", "슬랙스", "반바지", "조거팬츠",
-                "면바지", "치마", "두꺼운 바지", "얇은 바지"
-            ],
-            "아우터": [
-                "패딩", "후리스", "코트", "두꺼운 코트",
-                "가디건", "자켓", "점퍼", "집업", "얇은 자켓", "얇은 가디건"
-            ]
-        }
+def main(page: ft.Page):
+    # ─── 페이지 설정 ───
+    page.title = "핏픽 - 맞춤 옷 추천"
+    page.bgcolor = C["bg"]
+    page.padding = 0
+    page.theme_mode = ft.ThemeMode.LIGHT
+    page.theme = ft.Theme(
+        color_scheme_seed=C["primary"],
+        use_material3=True,
+        font_family=get_font(),
+    )
+    page.window.width     = 430
+    page.window.height    = 780
+    page.window.min_width = 380
+    page.window.min_height= 700
+    page.window.resizable = True
+    if IS_MAC:
+        page.window.center()
 
-        self.current_hue = 220
-        self.selected_rgb = (90, 130, 255)
-        self.selected_hex = "#5a82ff"
+    # ─── 전역 상태 ───
+    # 단일 dict로 관리 - 모든 뷰에서 참조
+    app_state = {
+        "user":          None,   # 로그인된 사용자 dict
+        "current_user":  None,   # user와 동일 (하위 호환)
+        "clothes":       [],     # Clothing 객체 리스트
+        "saved_outfits": [],     # 저장 코디 리스트
+    }
 
-        self.main_frame = tk.Frame(self.root, bg="#f4f6fb")
-        self.main_frame.pack(fill="both", expand=True)
+    def get_uid():
+        u = app_state["user"]
+        return u.get("user_id", "guest") if u else "guest"
 
-        self.main_ui = MainUI(self)
-        self.register_ui = RegisterUI(self)
-        self.clothes_ui = ClothesUI(self)
-        self.today_recommend_ui = TodayRecommendUI(self)
-        self.temperature_ui = TemperatureUI(self)
+    def set_user(u):
+        app_state["user"]         = u
+        app_state["current_user"] = u
 
-        self.show_home()
+    def load_clothes():
+        """백엔드에서 옷 목록 로드 - image_path는 반드시 resolve_existing_path 적용."""
+        app_state["clothes"] = []
+        try:
+            raw = get_clothes_from_backend(get_uid())
+            if not isinstance(raw, list):
+                return
+            for c in raw:
+                # image_path 경로 정규화 (핵심!)
+                raw_path = c.get("image_path", "")
+                resolved = resolve_existing_path(raw_path) if raw_path else ""
+                app_state["clothes"].append(
+                    Clothing(
+                        category   = c.get("category", ""),
+                        detail     = c.get("detail", ""),
+                        feature    = c.get("feature", ""),
+                        rgb        = (0, 0, 0),
+                        hex_code   = c.get("color_hex") or c.get("hex", "#cccccc"),
+                        color_name = c.get("color_name", "미분석"),
+                        image_path = resolved,
+                        clothing_id= c.get("id"),
+                        colors     = c.get("colors", []),
+                    )
+                )
+        except Exception as e:
+            print("[WARN] 옷 로드 실패:", e)
 
-    def clear_screen(self):
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+    def load_outfits():
+        try:
+            raw = get_saved_outfits_backend(get_uid())
+            if isinstance(raw, list):
+                app_state["saved_outfits"] = raw
+        except Exception as e:
+            print("[WARN] 코디 로드 실패:", e)
 
-    def create_top_bar(self, title=""):
-        top_bar = tk.Frame(self.main_frame, bg="white", height=65, bd=0)
-        top_bar.pack(fill="x")
-        top_bar.pack_propagate(False)
+    def logout():
+        set_user(None)
+        app_state["clothes"]       = []
+        app_state["saved_outfits"] = []
+        go("/login")
 
-        menu_btn = tk.Button(
-            top_bar,
-            text="☰",
-            font=("Arial", 20, "bold"),
-            bg="white",
-            fg="#333333",
-            bd=0,
-            activebackground="white",
-            command=self.open_menu
+    # ─── 햄버거 메뉴 ───
+    def open_menu():
+        R_MD_LOCAL = 12
+        btn_style = ft.ButtonStyle(
+            bgcolor=C["card"], color=C["text"],
+            shape=ft.RoundedRectangleBorder(radius=R_MD_LOCAL),
+            padding=ft.padding.symmetric(vertical=14, horizontal=10),
+            overlay_color=C["primary_soft"],
         )
-        menu_btn.place(x=15, y=12)
 
-        title_label = tk.Label(
-            top_bar,
-            text=title,
-            font=("Arial", 16, "bold"),
-            bg="white",
-            fg="#222222"
+        def nav(route):
+            def _fn(e):
+                page.close(dlg)
+                go(route)
+            return _fn
+
+        def do_logout(e):
+            page.close(dlg)
+            logout()
+
+        def do_home(e):
+            page.close(dlg)
+            go("/")
+
+        dlg = ft.AlertDialog(
+            modal=False,
+            title=ft.Text("메뉴", weight=ft.FontWeight.BOLD,
+                          size=18, color=C["text"]),
+            content=ft.Column([
+                ft.ElevatedButton("갖고있는 옷 확인",  width=240, on_click=nav("/clothes"),     style=btn_style),
+                ft.ElevatedButton("사용자 맞춤 코디",  width=240, on_click=nav("/personal"),    style=btn_style),
+                ft.ElevatedButton("색상 추천",         width=240, on_click=nav("/base_recommend"), style=btn_style),
+                ft.ElevatedButton("코디해보기",        width=240, on_click=nav("/coordination"), style=btn_style),
+                ft.ElevatedButton("나의 코디 확인",    width=240, on_click=nav("/outfit"),       style=btn_style),
+                ft.ElevatedButton("오늘의 추천 코디",  width=240, on_click=nav("/today"),        style=btn_style),
+                ft.ElevatedButton("홈으로",            width=240, on_click=do_home,              style=btn_style),
+                ft.Divider(height=1, color=C["border"]),
+                ft.ElevatedButton(
+                    "로그아웃", width=240, on_click=do_logout,
+                    style=ft.ButtonStyle(
+                        bgcolor=C["danger_soft"], color=C["danger"],
+                        shape=ft.RoundedRectangleBorder(radius=R_MD_LOCAL),
+                        padding=ft.padding.symmetric(vertical=14, horizontal=10),
+                    ),
+                ),
+            ], tight=True, spacing=6),
         )
-        title_label.place(relx=0.5, y=20, anchor="center")
+        page.open(dlg)
 
-        profile_btn = tk.Button(
-            top_bar,
-            text="👤",
-            font=("Arial", 16),
-            bg="#e9edf5",
-            fg="#333333",
-            bd=0,
-            width=2,
-            height=1,
-            activebackground="#dfe6f3",
-            command=self.show_profile
-        )
-        profile_btn.place(x=375, y=14)
+    R_MD = 12  # 메뉴 버튼 모서리
 
-    def open_menu(self):
-        menu_win = tk.Toplevel(self.root)
-        menu_win.title("메뉴")
-        menu_win.geometry("260x360")
-        menu_win.configure(bg="white")
-        menu_win.resizable(False, False)
+    # ─── 화면 컨테이너 ───
+    container = ft.Container(expand=True)
 
-        tk.Label(
-            menu_win,
-            text="메뉴",
-            font=("Arial", 16, "bold"),
-            bg="white",
-            fg="#222222"
-        ).pack(pady=18)
+    def go(route: str):
+        u = app_state["user"]
 
-        tk.Button(
-            menu_win,
-            text="갖고있는 옷 확인",
-            font=("Arial", 12),
-            bg="#f1f3f7",
-            fg="#222222",
-            width=20,
-            height=2,
-            bd=0,
-            command=lambda: [menu_win.destroy(), self.show_clothes_list()]
-        ).pack(pady=8)
+        # 비로그인 → 로그인/회원가입만
+        if u is None:
+            if route == "/signup":
+                container.content = build_signup(page, go, set_user, lambda: (load_clothes(), load_outfits()))
+            else:
+                container.content = build_login(page, go, set_user, lambda: (load_clothes(), load_outfits()))
+            page.update()
+            return
 
-        tk.Button(
-            menu_win,
-            text="온도 기반 추천",
-            font=("Arial", 12),
-            bg="#f1f3f7",
-            fg="#222222",
-            width=20,
-            height=2,
-            bd=0,
-            command=lambda: [menu_win.destroy(), self.show_temperature_ui()]
-        ).pack(pady=8)
+        # 라우팅
+        if route in ("/", "/home"):
+            container.content = build_home(page, go, u, app_state["clothes"], open_menu)
 
-        tk.Button(
-            menu_win,
-            text="오늘의 추천 코디",
-            font=("Arial", 12),
-            bg="#f1f3f7",
-            fg="#222222",
-            width=20,
-            height=2,
-            bd=0,
-            command=lambda: [menu_win.destroy(), self.show_today_recommend_ui()]
-        ).pack(pady=8)
+        elif route == "/register":
+            container.content = build_register_options(page, go)
 
-        tk.Button(
-            menu_win,
-            text="홈으로",
-            font=("Arial", 11),
-            bg="#d9dee8",
-            width=15,
-            bd=0,
-            command=menu_win.destroy
-        ).pack(pady=18)
+        elif route == "/register_photo":
+            container.content = build_register_photo(page, go, app_state)
 
-    def show_profile(self):
-        profile_win = tk.Toplevel(self.root)
-        profile_win.title("사용자 정보")
-        profile_win.geometry("300x250")
-        profile_win.configure(bg="white")
-        profile_win.resizable(False, False)
+        elif route == "/register_direct":
+            container.content = build_register_direct(page, go, app_state)
 
-        tk.Label(
-            profile_win,
-            text="사용자 정보",
-            font=("Arial", 16, "bold"),
-            bg="white",
-            fg="#222222"
-        ).pack(pady=18)
+        elif route == "/clothes":
+            # 옷장 진입 시 최신 목록 다시 로드
+            load_clothes()
+            container.content = build_clothes(page, go, app_state)
 
-        canvas = tk.Canvas(profile_win, width=70, height=70, bg="white", highlightthickness=0)
-        canvas.pack()
-        canvas.create_oval(5, 5, 65, 65, fill="#dbe4ff", outline="")
-        canvas.create_text(35, 35, text="👤", font=("Arial", 24))
+        elif route == "/clothes_edit":
+            container.content = build_clothes_edit(page, go, app_state)
 
-        tk.Label(
-            profile_win,
-            text="이름: 사용자\n스타일: 캐주얼\n관심: 옷 추천 / 색 조합",
-            font=("Arial", 12),
-            bg="white",
-            fg="#333333",
-            justify="center"
-        ).pack(pady=15)
+        elif route == "/recommend":
+            container.content = build_recommend(page, go, app_state)
 
-        tk.Button(
-            profile_win,
-            text="닫기",
-            font=("Arial", 11),
-            bg="#e9edf5",
-            width=12,
-            bd=0,
-            command=profile_win.destroy
-        ).pack(pady=10)
+        elif route == "/coordination":
+            container.content = build_coordination(page, go, app_state)
 
-    def show_home(self):
-        self.main_ui.show()
+        elif route == "/temperature":
+            container.content = build_temperature(page, go, app_state)
 
-    def show_register_options(self):
-        self.register_ui.show_register_options()
+        elif route == "/today":
+            container.content = build_today(page, go, app_state)
 
-    def show_clothes_list(self):
-        self.clothes_ui.show()
+        elif route == "/personal":
+            container.content = build_personal_recommend(page, go, app_state)
 
-    def show_today_recommend_ui(self):
-        self.today_recommend_ui.show()
+        elif route == "/base_recommend":
+            container.content = build_base_recommend(page, go, app_state)
 
-    def show_temperature_ui(self):
-        self.temperature_ui.show()
+        elif route == "/outfit":
+            load_outfits()
+            container.content = build_outfit(page, go, app_state)
+
+        elif route == "/profile":
+            container.content = build_profile(page, go, app_state, logout)
+
+        elif route == "/edit_profile":
+            container.content = build_edit_profile(page, go, app_state)
+
+        else:
+            container.content = build_home(page, go, u, app_state["clothes"], open_menu)
+
+        page.update()
+
+    page.add(container)
+    go("/login")
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = ClothingApp(root)
-    root.mainloop()
+    if IS_WINDOWS:
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except AttributeError:
+            pass
+    ft.app(target=main)

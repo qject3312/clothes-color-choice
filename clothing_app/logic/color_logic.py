@@ -3,6 +3,12 @@ def rgb_to_hex(r, g, b):
 
 
 def rgb_to_name(r, g, b):
+    try:
+        from logic.recommend_logic import rgb_to_basic_color
+        return rgb_to_basic_color((int(r), int(g), int(b)))
+    except Exception:
+        pass
+
     brightness = (r + g + b) / 3
 
     if max(r, g, b) - min(r, g, b) < 18:

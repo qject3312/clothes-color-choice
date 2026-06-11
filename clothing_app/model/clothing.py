@@ -8,7 +8,8 @@ class Clothing:
         hex_code,
         color_name,
         image_path="",
-        colors=None
+        colors=None,
+        clothing_id=None
     ):
         self.category = category
         self.detail = detail
@@ -20,6 +21,8 @@ class Clothing:
 
         # 사진에서 스포이드로 여러 색을 뽑았을 때 저장
         # 예: [{"rgb": (255, 255, 255), "hex": "#ffffff", "name": "흰색"}]
+        self.id = clothing_id
+
         self.colors = colors if colors is not None else [
             {
                 "rgb": rgb,

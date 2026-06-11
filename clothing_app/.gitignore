@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+build/
+dist/
+*.spec
+
+.DS_Store
+Thumbs.db
+
+test_sample_image.png
+clothes_data.json
+data/
+images/
